@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "1019066828160",
+    "firebase_url": "https://superceed-d8462.firebaseio.com",
+    "project_id": "superceed-d8462",
+    "storage_bucket": "superceed-d8462.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1019066828160:android:ba809ea5d18c7639",
+        "android_client_info": {
+          "package_name": "com.superceed.servicemillion"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1019066828160-49b3gm3aorcphdh3u4gvetg9uc4mga4v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBRYyaHyL9I6ErurTgk1pf7RYoyZZrM6U0"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
