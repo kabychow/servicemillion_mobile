@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:servicemillion/helpers/components.dart';
-import 'package:servicemillion/helpers/config.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:servicemillion/helpers/api.dart';
 import 'package:servicemillion/pages/home.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 
 class LoginPage extends StatefulWidget {
+  final Api _api;
+  const LoginPage(this._api);
   @override
   _LoginPageState createState() => _LoginPageState();
 }
@@ -18,39 +16,44 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: CustomAppBar(),
+      appBar: AppBar(
+        title: Row(
+          children: <Widget>[
+            Image.asset('assets/logo.png', height: 20),
+            Text('  Superceed'),
+          ],
+        ),
+        elevation: 0,
+      ),
       body: ListView(
         children: <Widget>[
-          CustomText(
-            'Please sign in to continue',
-            margin: EdgeInsets.only(top: 10),
-          ),
-          CustomTextField(
-            'Email Address',
+          Padding(padding: EdgeInsets.only(top: 10)),
+          Text('Please sign in to continue'),
+          Padding(padding: EdgeInsets.only(top: 15)),
+          TextField(
+            decoration: InputDecoration(labelText: 'Email Address'),
             controller: _email,
-            type: TextInputType.emailAddress,
-            margin: EdgeInsets.only(top: 15),
+            keyboardType: TextInputType.emailAddress,
           ),
-          CustomTextField(
-            'Password',
+          Padding(padding: EdgeInsets.only(top: 10)),
+          TextField(
+            decoration: InputDecoration(labelText: 'Password'),
             controller: _password,
-            password: true,
-            margin: EdgeInsets.only(top: 10),
+            obscureText: true,
           ),
-          CustomButton(
-            'Login',
-            onPressed: _login,
+          Padding(padding: EdgeInsets.only(top: 25)),
+          RaisedButton(
+            child: Text('Login'),
             padding: EdgeInsets.all(18),
-            margin: EdgeInsets.only(top: 25),
+            elevation: 0,
+            color: Theme.of(context).primaryColor,
+            colorBrightness: Brightness.dark,
+            onPressed: _login,
           ),
-          CustomButtonLight(
-            'Don\'t have an account? Register now!',
-            onPressed: () => {},
-            margin: EdgeInsets.only(top: 10),
-          ),
-          CustomButtonLight(
-            'Forgot password?',
-            onPressed: () => {},
+          Padding(padding: EdgeInsets.only(top: 10)),
+          FlatButton(
+            child: Text('Forgot password?'),
+            onPressed: () {},
           ),
         ],
         padding: EdgeInsets.all(15),
@@ -63,22 +66,36 @@ class _LoginPageState extends State<LoginPage> {
     final password = _password.text;
 
     if (email.isNotEmpty && password.isNotEmpty) {
-      final response = await http.post('$HOST_API/auth', body: {'email': email, 'password': password});
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final prefs = await SharedPreferences.getInstance();
-        prefs.setString('api_key', data['api_key']);
-        prefs.setBool('status', data['status'] == 1);
-        navigateTo(context, HomePage(data['api_key']), replace: true);
-      } else if (response.statusCode == 401) {
-        alert(context, 'Login failed', 'Incorrect credentials');
-      } else if (response.statusCode == 422) {
-        alert(context, 'Login failed', 'Invalid format for input data');
+      final response = await widget._api.login(email, password);
+      if (response.code == 200) {
+        widget._api.key = response.data['api_key'];
+        widget._api.prefs.setString('api_key', response.data['api_key']);
+        Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => HomePage(widget._api)), (_) => false);
+      } else if (response.code == 401) {
+        error('Incorrect credentials');
+      } else if (response.code == 422) {
+        error('Invalid format for input data');
       } else {
-        alert(context, 'Login failed', 'Unknown server error occurred');
+        error('Unknown server error occurred');
       }
     } else {
-      alert(context, 'Login failed', 'All fields are required');
+      error('All fields are required');
     }
+  }
+
+  void error(message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+            title: Text('Login failed'),
+            content: Text(message),
+            actions: <Widget>[
+              FlatButton(
+                child: Text('OK'),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+    );
   }
 }

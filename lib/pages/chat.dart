@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:servicemillion/helpers/components.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:web_socket_channel/io.dart';
-import 'package:servicemillion/helpers/config.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:servicemillion/helpers/api.dart';
+import 'package:servicemillion/pages/home.dart';
 
 IOWebSocketChannel channel;
 
 class ChatPage extends StatefulWidget {
-  final _apiKey, _ticketId, _name, _email, _message;
-  const ChatPage(this._apiKey, this._ticketId, this._name, this._email, this._message);
+  final Api _api;
+  final _ticketId, _name, _message;
+  const ChatPage(this._api, this._ticketId, this._name, this._message);
 
   @override
   _ChatPageState createState() => _ChatPageState();
@@ -18,27 +19,121 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   TextEditingController _messageController = TextEditingController();
   ScrollController _scrollController = ScrollController();
+
+  bool _sendable = false, _done = false;
   var _data = [];
 
   @override
   void initState() {
     super.initState();
-    channel = IOWebSocketChannel.connect(HOST_WEB_SOCKET, headers: {'Authorization': widget._apiKey, 'Tid': widget._ticketId});
-    channel.stream.listen(_receive, onDone: () {
-      Future(() {
-        Navigator.pop(context);
-        alert(context, 'Connection closed', 'The client has closed the connection');
-      });
+    channel = IOWebSocketChannel.connect('ws://172.20.10.2:8845', headers: {'Authorization': widget._api.key, 'Tid': widget._ticketId});
+    channel.stream.listen((raw) {
+      final data = jsonDecode(raw);
+      if (data['action'] == 'text') {
+        _receive(data['data']);
+      } else if (data['action'] == 'end') {
+        _receive(data['data']);
+        setState(() => _done = true);
+      }
     });
     _receive(widget._message);
-    sendGreeting();
+    _send(widget._api.prefs.getString('greetings') ?? 'Agent joined the chat');
   }
 
-  void sendGreeting() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _send(prefs.getString('greetings') ?? '');
-    });
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: () async => false,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget._name),
+          elevation: 0,
+          actions: <Widget>[
+            IconButton(
+              color: Colors.white,
+              icon: Icon(Icons.close),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                        title: Text('Leave chat'),
+                        content: Text('Are you sure to leave chat?'),
+                        actions: <Widget>[
+                          FlatButton(
+                            child: Text('CANCEL'),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                          FlatButton(
+                            child: Text('OK'),
+                            onPressed: () =>
+                                Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => HomePage(widget._api)), (_) => false),
+                          ),
+                        ],
+                      ),
+                );
+              },
+            ),
+          ],
+        ),
+        body: SafeArea(
+          child: Column(
+            children: <Widget>[
+              Flexible(
+                flex: 1,
+                child: ListView.builder(
+                  padding: EdgeInsets.all(5),
+                  controller: _scrollController,
+                  itemCount: _data.length,
+                  itemBuilder: (context, index) => Container(
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            left: _data[index]['self'] ? 25 : 0,
+                            right: _data[index]['self'] ? 0 : 25,
+                          ),
+                          child: Card(
+                            color: _data[index]['self'] ? Colors.blue : Colors.white,
+                            child: Padding(
+                              padding: EdgeInsets.all(10),
+                              child: Text(
+                                _data[index]['message'],
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: _data[index]['self'] ? Colors.white : Colors.black,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        alignment: _data[index]['self'] ? Alignment.centerRight : Alignment.centerLeft,
+                      ),
+                ),
+              ),
+              Row(
+                children: <Widget>[
+                  Flexible(
+                    flex: 1,
+                    child: Padding(
+                      padding: EdgeInsets.all(8),
+                      child: TextField(
+                        controller: _messageController,
+                        decoration: InputDecoration(hintText: 'Type your message here...'),
+                        enabled: !_done,
+                        onChanged: (text) => setState(() => _sendable = text.trim().isNotEmpty),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.send),
+                    onPressed: _done || !_sendable ? null : () => _send(_messageController.text.trim()),
+                    color: Theme.of(context).primaryColor,
+                  )
+                ],
+              )
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -47,68 +142,14 @@ class _ChatPageState extends State<ChatPage> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: CustomAppBar(
-        title: widget._name,
-      ),
-      body: SafeArea(
-        child: Column(
-          children: <Widget>[
-            Flexible(
-              flex: 1,
-              child: ListView.builder(
-                controller: _scrollController,
-                itemCount: _data.length,
-                itemBuilder: (context, index) => Padding(
-                  padding: EdgeInsets.only(left: _data[index]['self'] ? 25 : 0, right: _data[index]['self'] ? 0 : 25),
-                  child: Card(
-                    color: _data[index]['self'] ? Colors.white : Colors.blue,
-                    child: new Padding(
-                      padding: EdgeInsets.all(15),
-                      child: Text(
-                        _data[index]['message'],
-                        style: TextStyle(fontSize: 16, color: _data[index]['self'] ? Colors.black : Colors.white),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Row(
-              children: <Widget>[
-                Flexible(
-                  flex: 1,
-                  child: CustomTextField(
-                    'Type your message here...',
-                    type: TextInputType.multiline,
-                    margin: EdgeInsets.all(5),
-                    controller: _messageController,
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.send),
-                  onPressed: () => _send(_messageController.text.trim()),
-                  color: CustomColors.PRIMARY,
-                )
-              ],
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
   void _send(text) {
-    if (text.isNotEmpty) {
-      channel.sink.add(text);
-      setState(() {
-        _data.add({'self': true, 'message': text});
-        _messageController.clear();
-      });
-      _scrollToBottom();
-    }
+    channel.sink.add(text);
+    setState(() {
+      _data.add({'self': true, 'message': text});
+      _messageController.clear();
+      _sendable = false;
+    });
+    _scrollToBottom();
   }
 
   void _receive(message) {

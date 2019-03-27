@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:servicemillion/helpers/components.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:servicemillion/helpers/api.dart';
 import 'package:servicemillion/pages/login.dart';
 import 'package:servicemillion/pages/home.dart';
 
 Future main() async {
-  final _prefs = await SharedPreferences.getInstance();
-  final _apiKey = _prefs.getString('api_key');
+  final _api = Api();
+  await _api.init();
 
   runApp(new MaterialApp(
     title: 'Superceed',
     theme: ThemeData(
-      primarySwatch: CustomColors.PRIMARY,
+      primarySwatch: Colors.blue,
     ),
-    home: _apiKey == null ? LoginPage() : HomePage(_apiKey),
+    home: _api.key == null ? LoginPage(_api) : HomePage(_api),
     debugShowCheckedModeBanner: false,
   ));
 }
