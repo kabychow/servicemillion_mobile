@@ -1,9 +1,10 @@
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
 class Api {
-  static const HOST = 'http://172.20.10.2/api';
+  static const HOST = 'http://172.20.10.2/servicemillion_api';
   SharedPreferences prefs;
   String key;
 
@@ -13,19 +14,21 @@ class Api {
   }
 
   Future<_Response> login(String email, String password) async =>
-      _Response(await http.post('$HOST/auth', body: {'email': email, 'password': password}));
+      _Response(await http
+          .post('$HOST/auth', body: {'email': email, 'password': password}));
 
   Future<_Response> updateFcmToken(String token) async =>
-      _Response(await http.put('$HOST/users/me/fcm_token', body: {'fcm_token': token}, headers: {'Authorization': key}));
+      _Response(await http.put('$HOST/users/me/fcm_token',
+          body: {'fcm_token': token}, headers: {'Authorization': key}));
 
   Future<_Response> getChats() async =>
       _Response(await http.get('$HOST/chats', headers: {'Authorization': key}));
 
-  Future<_Response> getTickets() async =>
-      _Response(await http.get('$HOST/tickets', headers: {'Authorization': key}));
+  Future<_Response> getTickets() async => _Response(
+      await http.get('$HOST/tickets', headers: {'Authorization': key}));
 
-  Future<_Response> getResponses() async =>
-      _Response(await http.get('$HOST/responses', headers: {'Authorization': key}));
+  Future<_Response> getResponses() async => _Response(
+      await http.get('$HOST/responses', headers: {'Authorization': key}));
 }
 
 class _Response {
